@@ -1,0 +1,22 @@
+# Ignorar directorios y archivos específicos de Laravel
+/node_modules
+/public/storage
+/public/upload
+/storage/*.key
+/vendor
+.env
+.env.backup
+.env.local
+.phpunit.result.cache
+Homestead.json
+Homestead.yaml
+npm-debug.log
+yarn-error.log
+
+# Ignorar archivos generados automáticamente
+*.log
+*.sqlite
+*.sqlite3
+*.xlsx
+*.swp
+*.swo
