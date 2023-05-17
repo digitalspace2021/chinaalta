@@ -4,7 +4,7 @@
 
 	<!-- Logo -->
 	@if(!empty($receipt_details->logo))
-		<img src="{{$receipt_details->logo}}" class="img img-responsive center-block">
+		<img src="{{$receipt_details->logo}}" class="img img-responsive center-block" style="width: 50% !important">
 	@endif
 
 	<!-- Header text -->

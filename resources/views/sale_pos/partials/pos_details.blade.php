@@ -94,8 +94,16 @@
 
 					<tr>
 						<td>
+							<!-- add new button 05/05/2023-->
+							<br>
+							<button type="button"  class="btn btn-success btn-block btn-flat btn-lg no-print" id="pos-order">
+								<i class="fa fa-check" aria-hidden="true"></i>
+								<b>Generar pedido</b> 
+							</button>
+							<hr>
+							<!-- end new button -->
+							
 							<div class="col-sm-2 col-xs-6 col-2px-padding">
-
 								<button type="button" 
 									class="btn btn-warning btn-block btn-flat @if($pos_settings['disable_draft'] != 0) hide @endif" 
 									id="pos-draft">@lang('sale.draft')</button>

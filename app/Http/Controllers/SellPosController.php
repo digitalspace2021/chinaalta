@@ -311,7 +311,9 @@ class SellPosController extends Controller
                 if($input['is_suspend']) {
                     $input['sale_note'] = !empty($input['additional_notes']) ? $input['additional_notes'] : null;
                 }
-
+                
+                //------------changed by Marco Marin 08/05/2023-----------
+                //condition is added inside the function
                 $transaction = $this->transactionUtil->createSellTransaction($business_id, $input, $invoice_total, $user_id);
 
                 $this->transactionUtil->createOrUpdateSellLines($transaction, $input['products'], $input['location_id']);
@@ -325,7 +327,11 @@ class SellPosController extends Controller
                 }
 
                 if(!$transaction->is_suspend) {
-                    $this->transactionUtil->createOrUpdatePaymentLines($transaction, $input['payment']);
+                    //------------changed by Marco Marin 08/05/2023-----------
+                    //if the status is order, the function is not executed
+                    if($input['status'] != 'order'){
+                        $this->transactionUtil->createOrUpdatePaymentLines($transaction, $input['payment']);
+                    }     
                 }
 
                 if ($this->transactionUtil->isModuleEnabled('tables')) {
@@ -378,7 +384,14 @@ class SellPosController extends Controller
                 $receipt = '';
                 if ($input['status'] == 'draft' && $input['is_quotation'] == 0) {
                     $msg = trans("sale.draft_added");
-                } elseif ($input['status'] == 'draft' && $input['is_quotation'] == 1) {
+                } 
+                //------------add by Marco Marin 08/05/2023------------------------------
+                elseif ($input['status'] == 'order' && $input['is_quotation'] == 0) {
+                    $msg = trans("Pedido generado");
+                }
+                //------------------------------------------------------------------------
+
+                 elseif ($input['status'] == 'draft' && $input['is_quotation'] == 1) {
                     $msg = trans("lang_v1.quotation_added");
                     if (!$is_direct_sale) {
                         $receipt = $this->receiptContent($business_id, $input['location_id'], $transaction->id);
@@ -397,7 +410,11 @@ class SellPosController extends Controller
                 $output = ['success' => 1, 'msg' => $msg, 'receipt' => $receipt ];
             } else {
                 $output = ['success' => 0,
-                            'msg' => trans("messages.something_went_wrong")
+                            'msg' => trans("messages.
+                            
+                            
+                            
+                            ")
                         ];
             }
         } catch (\Exception $e) {
@@ -718,7 +735,14 @@ class SellPosController extends Controller
             if (!empty($input['products'])) {
                 //Get transaction value before updating.
                 $transaction_before = Transaction::find($id);
-                $status_before =  $transaction_before->status;
+
+                //--------------------- Add By Marco Marin 08/05/2023 -------------------------
+                if($transaction_before->status == 'final' && (empty($transaction_before->payment_status) || $transaction_before->payment_status==null)){
+                    $status_before='draft'; 
+                }else{
+                    $status_before =  $transaction_before->status;
+                }
+                //----------------------------------------------------------------------------
 
                 if ($transaction_before->is_direct_sale == 1) {
                     $is_direct_sale = true;
@@ -784,42 +808,50 @@ class SellPosController extends Controller
                 //Begin transaction
                 DB::beginTransaction();
 
+                //------------changed by Marco Marin 08/05/2023-----------
+                //condition is added inside the function
                 $transaction = $this->transactionUtil->updateSellTransaction($id, $business_id, $input, $invoice_total, $user_id);
 
                 //Update Sell lines
                 $deleted_lines = $this->transactionUtil->createOrUpdateSellLines($transaction, $input['products'], $input['location_id'], true, $status_before);
 
-                //Update update lines
-                if (!$is_direct_sale && !$transaction->is_suspend) {
-                    //Add change return
-                    $change_return = $this->dummyPaymentLine;
-                    $change_return['amount'] = $input['change_return'];
-                    $change_return['is_return'] = 1;
-                    if (!empty($input['change_return_id'])) {
-                        $change_return['id'] = $input['change_return_id'];
+                //------------changed by Marco Marin 08/05/2023-----------
+                //if the status is order, the function is not executed
+                if($input['status'] != 'order'){
+                    //Update update lines
+                    if (!$is_direct_sale && !$transaction->is_suspend) {
+                        //Add change return
+                        $change_return = $this->dummyPaymentLine;
+                        $change_return['amount'] = $input['change_return'];
+                        $change_return['is_return'] = 1;
+                        if (!empty($input['change_return_id'])) {
+                            $change_return['id'] = $input['change_return_id'];
+                        }
+                        $input['payment'][] = $change_return;
+                        
+
+                        $this->transactionUtil->createOrUpdatePaymentLines($transaction, $input['payment']);
+
+                        //Update cash register
+                        $this->cashRegisterUtil->updateSellPayments($status_before, $transaction, $input['payment']);
                     }
-                    $input['payment'][] = $change_return;
 
-                    $this->transactionUtil->createOrUpdatePaymentLines($transaction, $input['payment']);
+                    //Update payment status
+                    $this->transactionUtil->updatePaymentStatus($transaction->id, $transaction->final_total);
 
-                    //Update cash register
-                    $this->cashRegisterUtil->updateSellPayments($status_before, $transaction, $input['payment']);
+                    //Update product stock
+                    $this->productUtil->adjustProductStockForInvoice($status_before, $transaction, $input);
+
+                    //Allocate the quantity from purchase and add mapping of
+                    //purchase & sell lines in
+                    //transaction_sell_lines_purchase_lines table
+                    $business = ['id' => $business_id,
+                                    'accounting_method' => $request->session()->get('business.accounting_method'),
+                                    'location_id' => $input['location_id']
+                                ];
+                    $this->transactionUtil->adjustMappingPurchaseSell($status_before, $transaction, $business, $deleted_lines);
                 }
-
-                //Update payment status
-                $this->transactionUtil->updatePaymentStatus($transaction->id, $transaction->final_total);
-
-                //Update product stock
-                $this->productUtil->adjustProductStockForInvoice($status_before, $transaction, $input);
-
-                //Allocate the quantity from purchase and add mapping of
-                //purchase & sell lines in
-                //transaction_sell_lines_purchase_lines table
-                $business = ['id' => $business_id,
-                                'accounting_method' => $request->session()->get('business.accounting_method'),
-                                'location_id' => $input['location_id']
-                            ];
-                $this->transactionUtil->adjustMappingPurchaseSell($status_before, $transaction, $business, $deleted_lines);
+                //-------------------------------------
                 
                 if ($this->transactionUtil->isModuleEnabled('tables')) {
                     $transaction->res_table_id = request()->get('res_table_id');
@@ -837,7 +869,14 @@ class SellPosController extends Controller
 
                 if ($input['status'] == 'draft' && $input['is_quotation'] == 0) {
                     $msg = trans("sale.draft_added");
-                } elseif ($input['status'] == 'draft' && $input['is_quotation'] == 1) {
+                } 
+                //------------add by Marco Marin 08/05/2023------------------------------
+                elseif ($input['status'] == 'order' && $input['is_quotation'] == 0) {
+                    $msg = trans("Pedido generado");
+                }
+                //------------------------------------------------------------------------
+                
+                elseif ($input['status'] == 'draft' && $input['is_quotation'] == 1) {
                     $msg = trans("lang_v1.quotation_updated");
                     if (!$is_direct_sale) {
                         $receipt = $this->receiptContent($business_id, $input['location_id'], $transaction->id);

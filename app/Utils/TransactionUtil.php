@@ -41,6 +41,12 @@ class TransactionUtil extends Util
      */
     public function createSellTransaction($business_id, $input, $invoice_total, $user_id)
     {
+        //------------changed by Marco Marin 08/05/2023-----------
+        if($input['status']=='order'){
+            $input['status']='final';
+        }
+        //--------------------------------------------------
+
         $invoice_no = !empty($input['invoice_no']) ? $input['invoice_no'] : $this->getInvoiceNumber($business_id, $input['status'], $input['location_id']);
         $transaction = Transaction::create([
             'business_id' => $business_id,
@@ -101,6 +107,11 @@ class TransactionUtil extends Util
         //Update invoice number if changed from draft to finalize or vice-versa
         $invoice_no = $transaction->invoice_no;
         if ($transaction->status != $input['status']) {
+            //------------changed by Marco Marin 08/05/2023-----------
+            if($input['status']=='order'){
+                $input['status']='final';
+            }
+            //--------------------------------------------------
             $invoice_no = $this->getInvoiceNumber($business_id, $input['status'], $transaction->location_id);
         }
 

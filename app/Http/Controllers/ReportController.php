@@ -151,7 +151,8 @@ class ReportController extends Controller
 
             $data['total_recovered'] = !empty($total_stock_adjustment->total_recovered) ? $total_stock_adjustment->total_recovered : 0;
 
-            $data['total_transfer_shipping_charges'] = !empty($total_transfer_shipping_charges) ? $total_transfer_shipping_charges : 0;
+            $data['
+            '] = !empty($total_transfer_shipping_charges) ? $total_transfer_shipping_charges : 0;
 
             $data['total_purchase_discount'] = !empty($total_purchase_discount) ? $total_purchase_discount : 0;
             $data['total_sell_discount'] = !empty($total_sell_discount) ? $total_sell_discount : 0;

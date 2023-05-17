@@ -78,6 +78,8 @@ Route::middleware(['IsInstalled', 'auth', 'SetSessionData', 'language', 'timezon
     Route::post('/products/check_product_sku', 'ProductController@checkProductSku');
     Route::get('/products/quick_add', 'ProductController@quickAdd');
     Route::post('/products/save_quick_product', 'ProductController@saveQuickProduct');
+    //ruta stock
+    Route::get('/products/stock', 'ProductController@getStock');
     
     Route::resource('products', 'ProductController');
 
@@ -250,6 +252,7 @@ Route::middleware(['IsInstalled', 'auth', 'SetSessionData', 'language', 'timezon
 
         Route::get('/orders', 'Restaurant\OrderController@index');
         Route::get('/orders/mark-as-served/{id}', 'Restaurant\OrderController@markAsServed');
+        Route::get('/orders/mark-as-served/{id}/{id_user}', 'Restaurant\OrderController@markAsServedAdmin');//add by Marco Marin 10/05/2023
         Route::get('/data/get-pos-details', 'Restaurant\DataController@getPosDetails');
     });
 

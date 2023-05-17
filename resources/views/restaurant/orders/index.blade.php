@@ -12,7 +12,19 @@
         </div>
     </div>
 
+    <?php
+    //add by Marco Marin 10/05/2023
+    $items=[];
+    //-----------------------------
+    ?>
+    
     @if(!$is_service_staff)
+
+    <?php 
+        //add by Marco Marin 10/05/2023
+        $items=$service_staff->all();
+        //--------------
+    ?>
         <div class="box">
             <div class="box-body">
                 <div class="col-sm-6">
@@ -38,8 +50,9 @@
         </div>
         <div class="box-body">
         	 <input type="hidden" id="orders_for" value="waiter">
+        
             <div class="row" id="orders_div">
-             @include('restaurant.partials.show_orders', array('orders_for' => 'waiter'))   
+             @include('restaurant.partials.show_orders', array('orders_for' => 'waiter','user' => key($items)))   
             </div>
         </div>
         <div class="overlay hide">

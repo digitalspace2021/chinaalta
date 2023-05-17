@@ -16,6 +16,8 @@ use App\VariationLocationDetails;
 use App\BusinessLocation;
 use App\SellingPriceGroup;
 use App\VariationGroupPrice;
+use App\CompositeProduct;
+use App\User;
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -34,6 +36,8 @@ class ProductController extends Controller
     protected $productUtil;
 
     private $barcode_types;
+
+    private $stock;
 
     /**
      * Constructor
@@ -81,7 +85,7 @@ class ProductController extends Controller
                     'brands.name as brand',
                     'tax_rates.name as tax',
                     'products.sku',
-                    'products.image'
+                    'products.image',
                 );
             return Datatables::of($products)
                 ->addColumn(
@@ -151,9 +155,10 @@ class ProductController extends Controller
         }
 
         $rack_enabled = (request()->session()->get('business.enable_racks') || request()->session()->get('business.enable_row') || request()->session()->get('business.enable_position'));
-
+        $producs_stock=$this->getStock(); //add new parameter
         return view('product.index')
-            ->with(compact('rack_enabled'));
+            ->with(compact('rack_enabled'))
+            ->with('products_stock',$producs_stock);
     }
 
     /**
@@ -224,6 +229,7 @@ class ProductController extends Controller
             ->with(compact('categories', 'brands', 'units', 'taxes', 'barcode_types', 'default_profit_percent', 'tax_attributes', 'barcode_default', 'business_locations', 'duplicate_product', 'sub_categories', 'rack_details', 'selling_price_group_count'));
     }
 
+     
     /**
      * Store a newly created resource in storage.
      *
@@ -1307,4 +1313,113 @@ class ProductController extends Controller
 
         return view('product.view-product-group-prices')->with(compact('product', 'allowed_group_prices', 'group_price_details'));
     }
+
+//------------------------------------------------------------------------------------------------------------------------
+//24-03-2023 Modificado marco marin
+    public function getStoc(){
+        $result=[];
+        $stock=0;
+        $business_id = request()->session()->get('user.business_id');
+        
+            $products = Product::leftJoin('brands', 'products.brand_id', '=', 'brands.id')
+                ->leftJoin('units', 'products.unit_id', '=', 'units.id')
+                ->leftJoin('categories as c1', 'products.category_id', '=', 'c1.id')
+                ->leftJoin('categories as c2', 'products.sub_category_id', '=', 'c2.id')
+                ->leftJoin('tax_rates', 'products.tax', '=', 'tax_rates.id')
+                ->leftJoin('purchase_lines as pl','products.id','=','pl.product_id')
+                ->where('products.business_id', $business_id)
+                ->where('products.type', '!=', 'modifier')
+                ->select(
+                    'products.id',
+                    'products.name as product',
+                    'products.type',
+                    'c1.name as category',
+                    'c2.name as sub_category',
+                    'units.actual_name as unit',
+                    'brands.name as brand',
+                    'tax_rates.name as tax',
+                    'products.sku',
+                    'products.image',
+                    'pl.quantity',
+                    'pl.quantity_returned',
+                    'pl.quantity_sold',
+                    'pl.quantity_adjusted',
+                    'products.alert_quantity'
+                )->get();
+
+        foreach($products as $p){
+            $stock=(($p->quantity + $p->quantity_returned) - ($p->quantity_sold + $p->quantity_adjusted));
+            if($stock<=$p->alert_quantity){
+                $result[]=['id'=>$p->id,'name'=>$p->product,'sku'=>$p->sku,'stock'=>$stock,'alert'=>$p->alert_quantity];
+            }
+            
+        }
+
+        return $result;
+                
+    }   
+
+    //------------------------------------------------------------------------------------
+    //24-03-2023 Modificado marco marin
+    public function getStock()
+    {
+        $result=[];
+        $business_id = request()->session()->get('user.business_id');
+
+         //Return the details in ajax call
+            $query = Variation::leftjoin('products as p', 'p.id', '=', 'variations.product_id')
+                    ->leftjoin('units', 'p.unit_id', '=', 'units.id')
+                    ->leftjoin('variation_location_details as vld', 'variations.id', '=', 'vld.variation_id')
+                    ->leftjoin('product_variations as pv', 'variations.product_variation_id', '=', 'pv.id')
+                    ->where('p.business_id', $business_id)
+                    ->whereIn('p.type', ['single', 'variable']);
+
+            $permitted_locations = auth()->user()->permitted_locations();
+            $location_filter = '';
+
+            if ($permitted_locations != 'all') {
+                $query->whereIn('vld.location_id', $permitted_locations);
+
+                $locations_imploded = implode(', ', $permitted_locations);
+                $location_filter .= "AND transactions.location_id IN ($locations_imploded) ";
+            }
+
+            $products = $query->select(
+
+                DB::raw("(SELECT SUM(IF(transactions.type='sell', TSL.quantity - TSL.quantity_returned , -1* TPL.quantity) ) FROM transactions 
+                        LEFT JOIN transaction_sell_lines AS TSL ON transactions.id=TSL.transaction_id
+
+                        LEFT JOIN purchase_lines AS TPL ON transactions.id=TPL.transaction_id
+
+                        WHERE transactions.status='final' AND transactions.type='sell' $location_filter 
+                        AND (TSL.variation_id=variations.id OR TPL.variation_id=variations.id)) as total_sold"),
+                DB::raw("(SELECT SUM(IF(transactions.type='sell_transfer', TSL.quantity, 0) ) FROM transactions 
+                        LEFT JOIN transaction_sell_lines AS TSL ON transactions.id=TSL.transaction_id
+                        WHERE transactions.status='final' AND transactions.type='sell_transfer' $location_filter 
+                        AND (TSL.variation_id=variations.id)) as total_transfered"),
+                DB::raw("(SELECT SUM(IF(transactions.type='stock_adjustment', SAL.quantity, 0) ) FROM transactions 
+                        LEFT JOIN stock_adjustment_lines AS SAL ON transactions.id=SAL.transaction_id
+                        WHERE transactions.status='received' AND transactions.type='stock_adjustment' $location_filter 
+                        AND (SAL.variation_id=variations.id)) as total_adjusted"),
+                DB::raw("SUM(vld.qty_available) as stock"),
+                'variations.sub_sku as sku',
+                'p.name as product',
+                'p.type',
+                'p.id as product_id',
+                'units.short_name as unit',
+                'p.enable_stock as enable_stock',
+                'variations.sell_price_inc_tax as unit_price',
+                'pv.name as product_variation',
+                'variations.name as variation_name',
+                'p.alert_quantity as alert'
+            )->groupBy('variations.id')->get();
+
+            foreach($products as $p){
+                if($p->stock<=3 && $p->enable_stock===1)
+                $result[]=['id'=>$p->product_id,'name'=>$p->product,'sku'=>$p->sku,'stock'=>$p->stock,'alert'=>$p->alert];
+            }
+
+            return $result;
+    }
+
 }

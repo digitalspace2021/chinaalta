@@ -22,7 +22,9 @@
 		@foreach($locations as $key => $value)
 			<tr>
 				<td>{{$value}}</td>
-				<td>{!! Form::text('opening_stock[' . $key . '][quantity]', 0, ['class' => 'form-control input-sm input_number purchase_quantity', 'required']); !!}</td>
+				<td>
+					{!! Form::text('opening_stock[' . $key . '][quantity]', 0, ['class' => 'form-control input-sm input_number purchase_quantity', 'required']); !!}	
+				</td>	
 				<td>{!! Form::text('opening_stock[' . $key . '][purchase_price]', null , ['class' => 'form-control input-sm input_number unit_price', 'required']); !!}</td>
 				@if($enable_expiry)
 					<td>

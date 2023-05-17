@@ -48,8 +48,17 @@ $('#opening_stock_modal').off().on('shown.bs.modal', function (e) {
 $(document).on('click', 'button#add_opening_stock_btn', function(e){
 	e.preventDefault();
 	$(this).attr('disabled', true);
-	var data = $('form#add_opening_stock_form').serialize();
-
+	//Modified 27/04/2023 by Marco Marin
+	//it is validated that the minimum quantity of stock is not less than 3
+	var dataArray = $('form#add_opening_stock_form').serializeArray();
+	var stockini= dataArray[3]['value'];
+	if(stockini<=3){
+				toastr.error('El primer stock debe contener minimo 3 unidades del producto');
+				$(this).attr('disabled', false);
+	}
+	else{
+		var data = $('form#add_opening_stock_form').serialize();
+	
 	$.ajax({
 		method: "POST",
 		url: $('form#add_opening_stock_form').attr("action"),
@@ -61,9 +70,12 @@ $(document).on('click', 'button#add_opening_stock_btn', function(e){
 				toastr.success(result.msg);
 			} else {
 				toastr.error(result.msg);
+				
 			}
 		}
 	});
+	}
+	
 	return false;
 });
 

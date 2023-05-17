@@ -101,4 +101,54 @@ class OrderController extends Controller
 
         return $output;
     }
+
+    //------------------------Add by Marco Marin 10/05/2023--------------------------------
+    /**
+     * Marks an order as served by admin
+     * @return json $output
+     */
+    public function markAsServedAdmin($id,$id_user)
+    {
+        try {
+            
+            $business_id = request()->session()->get('user.business_id');
+            
+            if(!empty($id_user) && $id_user != null){
+                $user_id=$id_user;
+            }
+            else{
+                $user_id = request()->session()->get('user.id');
+            }
+            
+
+            $transaction = Transaction::where('business_id', $business_id)
+                            ->where('type', 'sell')
+                            ->where('res_waiter_id', $user_id)
+                            ->find($id);
+            if (!empty($transaction)) {
+                $transaction->res_order_status = 'served';
+                $transaction->save();
+                $output = ['success' => 1,
+                            'msg' => trans("restaurant.order_successfully_marked_served")
+                        ];
+            } else {
+                $output = ['success' => 0,
+                            'msg' => trans("messages.something_went_wrong")
+                        ];
+            }
+        } catch (\Exception $e) {
+            \Log::emergency("File:" . $e->getFile(). "Line:" . $e->getLine(). "Message:" . $e->getMessage());
+            
+            $output = ['success' => 0,
+                            'msg' => trans("messages.something_went_wrong")
+                        ];
+        }
+
+        return $output;
+    }
+    //-------------------------------------------------------------------------------------------------------
+
+    
+
+    
 }

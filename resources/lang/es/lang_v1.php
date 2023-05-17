@@ -528,4 +528,5 @@ return [
 "enable_selected_contacts" => "Restringir contactos seleccionados", 
 "tooltip_enable_selected_contacts" => "Restrinja el acceso a los contactos seleccionados en el cuadro de búsqueda vendedor / compra cliente / proveedor", 
 "selected_contacts" => "Seleccionar Contactos", 
+"The first stock must contain a minimum of 3 units of the product" => "El primer stock debe contener minimo 3 unidades del producto", //new add 27/04/2023
 ];

@@ -310,6 +310,43 @@ $(document).ready( function(){
         });
 	});
 
+	//-------------------Generate Order Button 05/05/2023 By Marco------------------------
+	//Save invoice as draft
+	$('button#pos-order').click(function(){
+
+		//Check if product is present or not.
+		if($('table#pos_table tbody').find('.product_row').length <= 0){
+			toastr.warning(LANG.no_products_added);
+			return false;
+		}
+
+		var is_valid = isValidPosForm();
+		if(is_valid != true){
+			return;
+		}
+
+		var data = pos_form_obj.serialize();
+		data = data + '&status=order&is_quotation=0';
+		var url = pos_form_obj.attr('action');
+
+		$.ajax({
+			method: "POST",
+			url: url,
+			data: data,
+			dataType: "json",
+			success: function(result){
+				if(result.success == 1){
+					reset_pos_form();
+					toastr.success(result.msg);
+					get_recent_transactions('final', $('div#tab_final'));
+				} else {
+					toastr.error(result.msg);
+				}
+			}
+		});
+	});
+	//---------------------End Generate Order Button-------------------------------
+
 	//Save invoice as draft
 	$('button#pos-draft').click(function(){
 

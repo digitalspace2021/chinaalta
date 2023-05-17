@@ -1,8 +1,8 @@
+
 @extends('layouts.app')
 @section('title', __('sale.products'))
 
 @section('content')
-
 <!-- Content Header (Page header) -->
 <section class="content-header">
     <h1>@lang('sale.products')
@@ -88,6 +88,9 @@
 @section('javascript')
     <script src="{{ asset('js/product.js?v=' . $asset_v) }}"></script>
     <script src="{{ asset('js/opening_stock.js?v=' . $asset_v) }}"></script>
+    @if(!empty($products_stock))
+        <script>$('#stock').modal('show');</script>
+    @endif
     <script type="text/javascript">
         $(document).ready( function(){
             var col_targets = [0, 9];
@@ -220,3 +223,49 @@
         });
     </script>
 @endsection
+
+@if(!empty($products_stock))
+
+<!--Modal-->
+<div class="modal" tabindex="-1" role="dialog" id="stock">
+    <div class="modal-dialog" role="document">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title">Pendientes por actualizar stock</h5>
+          <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+            <span aria-hidden="true">&times;</span>
+          </button>
+        </div>
+        <div class="modal-body">
+            <table class="table">
+                <thead>
+                  <tr>
+                    <th scope="col">#</th>
+                    <th scope="col">producto</th>
+                    <th scope="col">sku</th>
+                    <th scope="col">stock actual</th>
+                    <th>Accion</th>
+                  </tr>
+                </thead>
+                <tbody>
+                    @foreach($products_stock as $ps)
+                  <tr>
+                    <th scope="row">{{$ps['id']}}</th>
+                    <td>{{$ps['name']}}</td>
+                    <td>{{$ps['sku']}}</td>
+                    <td>{{$ps['stock']?$ps['stock']:'0.0000'}}</td>
+                    <th><a href="purchases">Actualizar</a></th>
+                  </tr>
+                  @endforeach
+                </tbody>
+              </table>      
+            
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-dismiss="modal">Cerrar</button>
+        </div>
+      </div>
+    </div>
+  </div>
+<!-- Fin Modal-->
+@endif

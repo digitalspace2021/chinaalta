@@ -1,3 +1,12 @@
+<?php 
+//add by Marco Marin 10/05/2023
+$item=null;
+ if(isset($user) && !empty($user)){
+	$item=$user;
+	//print_r($item);
+ }
+//-----------------------------------------------
+?>
 @forelse($orders as $order)
 	<div class="col-md-3 col-xs-6 order_div">
 		<div class="small-box bg-gray">
@@ -14,7 +23,7 @@
             @if($orders_for == 'kitchen')
             	<a href="#" class="btn btn-flat small-box-footer bg-yellow mark_as_cooked_btn" data-href="{{action('Restaurant\KitchenController@markAsCooked', [$order->id])}}"><i class="fa fa-check-square-o"></i> @lang('restaurant.mark_as_cooked')</a>
             @elseif($orders_for == 'waiter' && $order->res_order_status != 'served')
-            	<a href="#" class="btn btn-flat small-box-footer bg-yellow mark_as_served_btn" data-href="{{action('Restaurant\OrderController@markAsServed', [$order->id])}}"><i class="fa fa-check-square-o"></i> @lang('restaurant.mark_as_served')</a>
+            	<a href="#" class="btn btn-flat small-box-footer bg-yellow mark_as_served_btn" data-href="{{action('Restaurant\OrderController@markAsServedAdmin', [$order->id,$item])}}"><i class="fa fa-check-square-o"></i> @lang('restaurant.mark_as_served')</a>
             @else
             	<div class="small-box-footer bg-gray">&nbsp;</div>
             @endif
