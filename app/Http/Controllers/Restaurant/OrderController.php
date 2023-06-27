@@ -36,6 +36,7 @@ class OrderController extends Controller
 
     /**
      * Display a listing of the resource.
+     * Modified By Marco Marin 06-2023 add new filters, by date and by table.
      * @return Response
      */
     public function index()
@@ -49,18 +50,93 @@ class OrderController extends Controller
         $is_service_staff = false;
         $orders = [];
         $service_staff = [];
+        
+        //for service staff
         if ($this->restUtil->is_service_staff($user_id)) {
             $is_service_staff = true;
-            $orders = $this->restUtil->getAllOrders($business_id, ['waiter_id' => $user_id]);
-        } elseif (!empty(request()->service_staff)) {
+            //for user loged
+            //for id user
+            if (empty(request()->service_staff) && empty(request()->date) && empty(request()->table)) {
+                $orders = $this->restUtil->getAllOrders($business_id, ['waiter_id' => $user_id]);
+            }
+            //for date
+            elseif (empty(request()->service_staff) && !empty(request()->date) && empty(request()->table)) {
+                $orders = $this->restUtil->getAllOrders($business_id, ['waiter_id' => $user_id,'date' => request()->date]);
+            }
+            //for table
+            elseif (empty(request()->service_staff) && empty(request()->date) && !empty(request()->table)) {
+                $orders = $this->restUtil->getAllOrders($business_id, ['waiter_id' => $user_id,'table' => request()->table]);
+            }
+            //for date and table
+            elseif(empty(request()->service_staff) && !empty(request()->date) && !empty(request()->table)){
+                $orders = $this->restUtil->getAllOrders($business_id, ['waiter_id' => $user_id,'date'=>request()->date,'table'=>request()->table]);
+            }  
+            //------end user loged---------
+            
+            //for user selected
+                //for id user
+                elseif (!empty(request()->service_staff) && empty(request()->date) && empty(request()->table)) {
+                    $orders = $this->restUtil->getAllOrders($business_id, ['waiter_id' => request()->service_staff]);
+                }
+                //for id user and date
+                elseif(!empty(request()->service_staff) && !empty(request()->date) && empty(request()->table)){
+                    $orders = $this->restUtil->getAllOrders($business_id, ['waiter_id' => request()->service_staff,'date'=>request()->date]);
+                }
+                //for id user and table
+                elseif(!empty(request()->service_staff) && empty(request()->date) && !empty(request()->table)){
+                    $orders = $this->restUtil->getAllOrders($business_id, ['waiter_id' => request()->service_staff,'table'=>request()->table]);
+                }
+                //for id user, date and table
+                elseif(!empty(request()->service_staff) && !empty(request()->date) && !empty(request()->table)){
+                    $orders = $this->restUtil->getAllOrders($business_id, ['waiter_id' => request()->service_staff,'date'=>request()->date,'table'=>request()->table]);
+                }
+            //------ end user selected-------------
+        }
+
+        //for id user
+        elseif (!empty(request()->service_staff) && empty(request()->date) && empty(request()->table)) {
             $orders = $this->restUtil->getAllOrders($business_id, ['waiter_id' => request()->service_staff]);
         }
+        //for date
+        elseif (empty(request()->service_staff) && !empty(request()->date) && empty(request()->table)) {
+            $orders = $this->restUtil->getAllOrders($business_id, ['date' => request()->date]);
+        }
+        //for table
+        elseif (empty(request()->service_staff) && empty(request()->date) && !empty(request()->table)) {
+            $orders = $this->restUtil->getAllOrders($business_id, ['table' => request()->table]);
+        }
+        //for id user and date
+        elseif(!empty(request()->service_staff) && !empty(request()->date) && empty(request()->table)){
+            $orders = $this->restUtil->getAllOrders($business_id, ['waiter_id' => request()->service_staff,'date'=>request()->date]);
+        }
+        //for id user and table
+        elseif(!empty(request()->service_staff) && empty(request()->date) && !empty(request()->table)){
+            $orders = $this->restUtil->getAllOrders($business_id, ['waiter_id' => request()->service_staff,'table'=>request()->table]);
+        }
+        //for date user and table
+        elseif(empty(request()->service_staff) && !empty(request()->date) && !empty(request()->table)){
+            $orders = $this->restUtil->getAllOrders($business_id, ['date' => request()->date,'table'=>request()->table]);
+        }
+        //for id user, date and table
+        elseif(!empty(request()->service_staff) && !empty(request()->date) && !empty(request()->table)){
+            $orders = $this->restUtil->getAllOrders($business_id, ['waiter_id' => request()->service_staff,'date'=>request()->date,'table'=>request()->table]);
+        }
+        
+        //for all
+        else{
+            $orders = $this->restUtil->getAllOrders($business_id, []);
+        }
+        
 
         if (!$is_service_staff) {
             $service_staff = $this->restUtil->service_staff_dropdown($business_id);
         }
 
-        return view('restaurant.orders.index', compact('orders', 'is_service_staff', 'service_staff'));
+        //get all tables
+        $tables=[];
+        $tables=$this->restUtil->getTables($business_id);
+
+        return view('restaurant.orders.index', compact('orders', 'is_service_staff', 'service_staff','tables'));
     }
 
     /**

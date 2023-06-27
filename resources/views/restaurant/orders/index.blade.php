@@ -37,6 +37,20 @@
                             {!! Form::select('service_staff', $service_staff, null, ['class' => 'form-control select2', 'placeholder' => __('restaurant.select_service_staff'), 'id' => 'service_staff_id']); !!}
                         </div>
                     </div>
+                    <!-- New fields for filter, add By Marco Marin 06-2023 -->
+                    <div class="form-group">
+                        <div class="input-group">
+                             <span class="input-group-addon" id="basic-addon1"><i class="fa fa-calendar "></i></span>
+                             {!! Form::date('date',null,['class'=>'form-control','id'=>'date-order']); !!}
+                        </div>
+                   </div>
+                   <div class="form-group">
+                        <div class="input-group">
+                             <span class="input-group-addon" id="basic-addon1"><i class="fa fa-cutlery  "></i></span>
+                             {!! Form::select('table',$tables,null,['class'=>'form-control','placeholder'=>'Filtrar por mesa','id'=>'table-order']); !!}
+                        </div>
+                   </div>
+                    <!-- End fields -->
                     {!! Form::close() !!}
                 </div>
             </div>
@@ -70,6 +84,16 @@
         $('select#service_staff_id').change( function(){
             $('form#select_service_staff_form').submit();
         });
+
+        //validate when a filter option is changed, added by Marco Marin 06-2023
+        $('input#date-order').change( function(){
+            $('form#select_service_staff_form').submit();
+        });
+        $('select#table-order').change( function(){
+            $('form#select_service_staff_form').submit();
+        });
+        //End validate
+
         $(document).ready(function(){
             $(document).on('click', 'a.mark_as_served_btn', function(e){
                 e.preventDefault();

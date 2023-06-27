@@ -29,6 +29,7 @@ Route::middleware(['IsInstalled'])->group(function () {
 //Routes for authenticated users only
 Route::middleware(['IsInstalled', 'auth', 'SetSessionData', 'language', 'timezone'])->group(function () {
 
+    
     Route::get('/logout', 'Auth\LoginController@logout')->name('logout');
 
     Route::get('/home', 'HomeController@index')->name('home');
@@ -87,6 +88,7 @@ Route::middleware(['IsInstalled', 'auth', 'SetSessionData', 'language', 'timezon
     Route::get('/purchases/get_suppliers', 'PurchaseController@getSuppliers');
     Route::post('/purchases/get_purchase_entry_row', 'PurchaseController@getPurchaseEntryRow');
     Route::post('/purchases/check_ref_number', 'PurchaseController@checkRefNumber');
+    Route::post('/purchases/update_stock', 'PurchaseController@updateStock');//new route by marco 06-06-2023
     Route::get('/purchases/print/{id}', 'PurchaseController@printInvoice');
     Route::resource('purchases', 'PurchaseController');
 
@@ -98,6 +100,7 @@ Route::middleware(['IsInstalled', 'auth', 'SetSessionData', 'language', 'timezon
 
     Route::get('/sells/pos/get_product_row/{variation_id}/{location_id}', 'SellPosController@getProductRow');
     Route::post('/sells/pos/get_payment_row', 'SellPosController@getPaymentRow');
+    Route::post('/sell/pos/status','SellPosController@UpdateStatus'); //Add By marco Marin
     Route::get('/sells/pos/get-recent-transactions', 'SellPosController@getRecentTransactions');
     Route::get('/sells/{transaction_id}/print', 'SellPosController@printInvoice')->name('sell.printInvoice');
     Route::get('/sells/pos/get-product-suggestion', 'SellPosController@getProductSuggestion');

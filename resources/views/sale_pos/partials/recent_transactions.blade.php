@@ -1,3 +1,47 @@
+@php
+//add by marco Marin 08-06-2023
+	$status_act=null;
+	$status_list = [
+    ['status' => 'En Cocina', 'value' => 1],
+    ['status' => 'Cocinado', 'value' => 2],
+    ['status' => 'Despachado', 'value' => 3]
+];
+$status=["1"=>"En Cocina","2"=>"Cocinado","3"=>"Despachado","4"=>"Pagado"];
+@endphp
+<!-- filters add By Marco Marin 11-06-2023-->
+<div class="container">
+	<h3>Filtros</h3>
+	<div style="row">
+				
+		@if (!empty($tables))
+		
+			<div class="col-md-2">
+				<label for="">Por mesa</label>
+				<select name="table_filter" id="table_filter">
+					<option value="">Seleccione una mesa</option>
+					@foreach($tables as $id=>$table)
+						<option value="{{$id}}">{{$table}}</option>
+					@endforeach
+				</select>
+			</div>
+		@endif
+		
+
+		<div class="col-md-2">
+			<label for="">Por estado</label>
+			<select name="status_filter" id="status_filter">
+				<option value="">Se leccione un estado</option>
+				@foreach($status as $id=>$sta)
+					<option value="{{$id}}">{{$sta}}</option>
+				@endforeach
+			</select>
+			</div>
+	</div>
+	
+</div>
+<br>
+<!-- end filters-->
+
 @if(!empty($transactions))
 	<table class="table table-slim no-border">
 		<thead>
@@ -15,6 +59,7 @@
 		  </thead>
 		  <tbody>
 		@foreach ($transactions as $transaction)
+		
 			<tr class="cursor-pointer" 
 	    		data-toggle="tooltip"
 	    		data-html="true"
@@ -45,15 +90,16 @@
 					{{ $transaction->final_total }}
 				</td>
 				<td>
-					@if(empty($transaction->res_order_status))
-						<p class="bg-danger">En cocina</p> 
-					@elseif($transaction->res_order_status == 'cooked')
-						<p class="bg-warning">Cocinado</p>
+					
+					@if(empty($transaction->res_order_status) && empty($transaction->payment_status)) 
+						<a id="{{$transaction->id}}" href="#" onclick="modal({{$transaction->id}},'En Cocina')"  ><p class="bg-danger">En cocina</p></a>	
+					@elseif($transaction->res_order_status == 'cooked' && empty($transaction->payment_status)) 
+						<a id="{{$transaction->id}}" href="#" onclick="modal({{$transaction->id}},'Cocinado')" "><p class="bg-warning">Cocinado</p></a>		
 					@elseif($transaction->res_order_status == 'served' && empty($transaction->payment_status)) 
-						<p class="bg-info">Despachado</p>
-					@elseif($transaction->res_order_status == 'served' && $transaction->payment_status == 'paid')	
-						<p class="bg-success">Pagado</p>
-					@elseif($transaction->res_order_status == 'served' && $transaction->payment_status == 'due')	
+						<a id="{{$transaction->id}}" href="#" onclick="modal({{$transaction->id}},'Despachado')" ><p class="bg-info">Despachado</p></a>							
+					@elseif((!empty($transaction->res_order_status) || empty($transaction->res_order_status)) && $transaction->payment_status == 'paid')	
+						<p class="bg-success">Pagado</p>	
+					@elseif((!empty($transaction->res_order_status) || empty($transaction->res_order_status)) && $transaction->payment_status == 'due')	
 						<p class="bg-danger">Debe</p>
 					@endif
 					
@@ -77,3 +123,22 @@
 @else
 	<p>@lang('sale.no_recent_transactions')</p>
 @endif
+
+
+<!--include modal, and send values ​​to fill the select-->
+@include('sale_pos.partials.status_modal',['status_list'=>$status_list])
+
+<script>
+	function modal(id,status_act){
+		//open Modal
+		$('#miModal').modal('show');
+		//assign value to the input, with the transaction id
+		$('#id_transaction').val(id);
+		//assign value to the first option of the select, with the current state
+		$('#select_status option[value="0"]').text(status_act);
+	}
+</script>
+
+<!-- Add new script for filtres-->
+<script src="{{asset('js/filters.js')}}"></script>
+<!-- End new script for filtres-->

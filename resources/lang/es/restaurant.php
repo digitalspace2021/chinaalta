@@ -11,7 +11,7 @@ return [
 "edit_table" => "Editar tabla", 
 "table_name" => "Nombre de la tabla", 
 "short_description" => "Breve descripción", 
-"select_table" => "Seleccionar tabla", 
+"select_table" => "Seleccionar Una Mesa", //modified by Marco Marin
 "show_table" => "Mostrar tabla", 
 "table_label" => "Etiqueta de la mesa", 
 "show_service_staff" => "Mostrar personal de servicio", 

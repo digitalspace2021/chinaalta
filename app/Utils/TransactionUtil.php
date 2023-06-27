@@ -78,6 +78,7 @@ class TransactionUtil extends Util
             'pay_term_number' => isset($input['pay_term_number']) ? $input['pay_term_number'] : null,
             'pay_term_type' => isset($input['pay_term_type']) ? $input['pay_term_type'] : null,
             'is_suspend' => !empty($input['is_suspend']) ? 1 : 0,
+            'perquisite' => $input['perquisite'],
         ]);
 
         return $transaction;
@@ -138,6 +139,7 @@ class TransactionUtil extends Util
             'pay_term_number' => isset($input['pay_term_number']) ? $input['pay_term_number'] : null,
             'pay_term_type' => isset($input['pay_term_type']) ? $input['pay_term_type'] : null,
             'is_suspend' => !empty($input['is_suspend']) ? 1 : 0,
+            'perquisite' => $input['perquisite'],
         ];
 
         if (!empty($input['transaction_date'])) {
@@ -3113,4 +3115,77 @@ class TransactionUtil extends Util
 
         return false;
     }
+
+//-----------------------------------------------------------------------------------------------
+    //check if there is a transaction with the selected table, and that no payment is recorded
+
+    /**
+     * consultar transaccion add By marco Marin 08-06-2023
+     *
+     * @param  \Illuminate\Http\Request $request
+     * @return \Illuminate\Http\Response
+     */
+    public function validateTransaction($res_table_id){
+        $res= true;
+        if(!empty($res_table_id)){
+            $transaction = Transaction::where('res_table_id', $res_table_id)
+                ->where('type', 'sell')
+                ->where(function ($query) {
+                    $query->whereNotIn('payment_status', ['paid', 'due'])
+                        ->orWhereNull('payment_status');
+                })
+                ->orderBy('updated_at', 'desc')
+                ->first();
+
+              
+            if($transaction){
+                $res=false;
+            }
+        }
+
+        return $res;
+    }
+    
+    /**
+     * consultar transaccion antes de actualizar add By marco Marin 08-06-2023
+     *
+     * @param  \Illuminate\Http\Request $request
+     * @return \Illuminate\Http\Response
+     */
+    public function validateUpdateTransaction($res_table_id,$transaction_id){
+        $res= true;
+        if(!empty($res_table_id)){
+            $transaction = Transaction::where('res_table_id', $res_table_id)
+                ->where('type', 'sell')
+                ->where(function ($query) {
+                    $query->whereNotIn('payment_status', ['paid', 'due'])
+                        ->orWhereNull('payment_status');
+                })
+                ->where('id',$transaction_id)
+                ->orderBy('updated_at', 'desc')
+                ->first();
+ 
+            if($transaction){
+                $res=true;
+            }
+            else{
+                $transactionII = Transaction::where('res_table_id', $res_table_id)
+                ->where('type', 'sell')
+                ->where(function ($query) {
+                    $query->whereNotIn('payment_status', ['paid', 'due'])
+                        ->orWhereNull('payment_status');
+                })
+                ->orderBy('updated_at', 'desc')
+                ->first();
+
+                if($transactionII){
+                    $res=false;
+                }
+            }
+            
+        }
+
+        return $res;
+    }
+    
 }

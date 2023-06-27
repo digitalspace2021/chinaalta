@@ -222,6 +222,36 @@
             })
         });
     </script>
+
+    <!-- New script update stock  By Marco Marin 06-06-2023-->
+    <script type="text/javascript">
+        //para aumentar el stock
+        function addStock(id){
+            let quantity = $("#quantity_product_"+id).val();
+            //console.log(quantity);
+            if(quantity==""){
+                toastr.error("ingrese una cantidad");
+            }
+            
+            $.ajax({
+                url: '/purchases/update_stock',
+                type: 'POST',
+                data:{term:id,qty:quantity},
+                success: function(response) {
+                    if(response.success == true){
+                        toastr.success(response.msg);
+                        location.reload();
+                    } else {
+                        toastr.error(response.msg);
+                    }
+                },
+                error: function(xhr, status, error) {
+                    console.log(error);
+                }
+            });
+
+        }
+    </script>
 @endsection
 
 @if(!empty($products_stock))
@@ -254,7 +284,16 @@
                     <td>{{$ps['name']}}</td>
                     <td>{{$ps['sku']}}</td>
                     <td>{{$ps['stock']?$ps['stock']:'0.0000'}}</td>
-                    <th><a href="purchases">Actualizar</a></th>
+                    <th>
+                        <!-- new input add by Marco Marin 06-06-2023-->
+                        <div class="input-group">
+                            <input type="number" id="quantity_product_{{$ps['id']}}" placeholder="Cantidad">
+                            <span class="input-group-btn">
+                                <button class="btn btn-primary" type="button" id="btn_add_quantity" onclick="addStock({{$ps['id']}})">Add</button>
+                            </span>  
+                        </div> 
+                        <!-- end input -->
+                    </th>
                   </tr>
                   @endforeach
                 </tbody>

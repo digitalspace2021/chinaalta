@@ -51,6 +51,9 @@ use App\Utils\TransactionUtil;
 use App\Utils\CashRegisterUtil;
 use App\Utils\ModuleUtil;
 use App\Utils\NotificationUtil;
+use App\Utils\RestaurantUtil;
+
+use Carbon\Carbon;
 
 use Yajra\DataTables\Facades\DataTables;
 
@@ -67,6 +70,7 @@ class SellPosController extends Controller
     protected $cashRegisterUtil;
     protected $moduleUtil;
     protected $notificationUtil;
+    protected $resUtil;
 
     /**
      * Constructor
@@ -81,7 +85,8 @@ class SellPosController extends Controller
         TransactionUtil $transactionUtil,
         CashRegisterUtil $cashRegisterUtil,
         ModuleUtil $moduleUtil,
-        NotificationUtil $notificationUtil
+        NotificationUtil $notificationUtil,
+        RestaurantUtil $resUtil
     ) {
     
         $this->contactUtil = $contactUtil;
@@ -91,6 +96,7 @@ class SellPosController extends Controller
         $this->cashRegisterUtil = $cashRegisterUtil;
         $this->moduleUtil = $moduleUtil;
         $this->notificationUtil = $notificationUtil;
+        $this->resUtil = $resUtil;
 
         $this->dummyPaymentLine = ['method' => 'cash', 'amount' => 0, 'note' => '', 'card_transaction_number' => '', 'card_number' => '', 'card_type' => '', 'card_holder_name' => '', 'card_month' => '', 'card_year' => '', 'card_security' => '', 'cheque_number' => '', 'bank_account_number' => '',
         'is_return' => 0, 'transaction_no' => ''];
@@ -312,10 +318,26 @@ class SellPosController extends Controller
                     $input['sale_note'] = !empty($input['additional_notes']) ? $input['additional_notes'] : null;
                 }
                 
+                //perquisite of 10% add By marco marin 06-2023
+                if(!empty($request->input('perquisite'))){
+                    $input['perquisite']=1;
+                }
+                else{
+                    $input['perquisite']=0;
+                }
+                //-----------------------------------------------
+
                 //------------changed by Marco Marin 08/05/2023-----------
                 //condition is added inside the function
-                $transaction = $this->transactionUtil->createSellTransaction($business_id, $input, $invoice_total, $user_id);
-
+                //Validate if the table is already occupied, only if it is free, allow the transaction to be carried out.
+                if($this->transactionUtil->validateTransaction($request->input('res_table_id'))){
+                    $transaction = $this->transactionUtil->createSellTransaction($business_id, $input, $invoice_total, $user_id);
+                }
+                else{
+                    $transaction=null;
+                    
+                }
+                //-------------------------------
                 $this->transactionUtil->createOrUpdateSellLines($transaction, $input['products'], $input['location_id']);
                 
                 if (!$is_direct_sale) {
@@ -427,9 +449,17 @@ class SellPosController extends Controller
                 $msg = trans("messages.something_went_wrong");
             }
 
-            $output = ['success' => 0,
+            //alert messages add By Marco Marin 06-2023
+            if($transaction==null){
+                $output = ['success' => 0,
+                    'msg' => trans("La Mesa esta ocupada en el momento, por favor seleccione otra")
+                    ];
+            }
+            else{
+                $output = ['success' => 0,
                             'msg' => "File:" . $e->getFile(). "Line:" . $e->getLine(). "Message:" . $e->getMessage()
                         ];
+            }
         }
 
         if (!$is_direct_sale) {
@@ -805,12 +835,30 @@ class SellPosController extends Controller
                     $input['sale_note'] = !empty($input['additional_notes']) ? $input['additional_notes'] : null;
                 }
 
+                //perquisite of 10% add By marco marin 06-2023
+                if(!empty($request->input('perquisite'))){
+                    $input['perquisite']=1;
+                }
+                else{
+                    $input['perquisite']=0;
+                }
+                //-----------------------------------------------
+                
                 //Begin transaction
                 DB::beginTransaction();
 
                 //------------changed by Marco Marin 08/05/2023-----------
                 //condition is added inside the function
-                $transaction = $this->transactionUtil->updateSellTransaction($id, $business_id, $input, $invoice_total, $user_id);
+
+                // Validate if the table is already occupied, only if it is free, allow the transaction to be carried out. Add by Marco marin 06-2023
+                    if($this->transactionUtil->validateUpdateTransaction($request->input('res_table_id'),$id)){
+                        $transaction = $this->transactionUtil->updateSellTransaction($id, $business_id, $input, $invoice_total, $user_id);
+                    }
+                    else{
+                        $transaction=null;
+                        
+                    }
+                //--------------------------------------------------------------
 
                 //Update Sell lines
                 $deleted_lines = $this->transactionUtil->createOrUpdateSellLines($transaction, $input['products'], $input['location_id'], true, $status_before);
@@ -902,9 +950,17 @@ class SellPosController extends Controller
             DB::rollBack();
             \Log::emergency("File:" . $e->getFile(). "Line:" . $e->getLine(). "Message:" . $e->getMessage());
             
-            $output = ['success' => 0,
+            //alert message Add By Marco Marin 06-2023
+            if($transaction==null){
+                $output = ['success' => 0,
+                    'msg' => __("La Mesa esta ocupada en el momento, por favor seleccione otra")
+                    ];
+            }
+            else{ 
+                $output = ['success' => 0,
                             'msg' => __('messages.something_went_wrong')
                         ];
+            }
         }
 
         if (!$is_direct_sale) {
@@ -1115,16 +1171,25 @@ class SellPosController extends Controller
 
     /**
      * Returns recent transactions
+     * Modified by Marco Marin 06-2023
      *
      * @param  \Illuminate\Http\Request $request
      * @return \Illuminate\Http\Response
      */
     public function getRecentTransactions(Request $request)
     {
+        $dateNow = Carbon::now();
+        $monthNow = $dateNow->format('m');
+        $yearNow = $dateNow->format('Y');
+
+
         $business_id = $request->session()->get('user.business_id');
         $user_id = $request->session()->get('user.id');
         $transaction_status = $request->get('status');
 
+        $status_filter=$request->get('status_filter');
+        $table_filter=$request->get('table_filter');
+        
         $query = Transaction::where('business_id', $business_id)
                             ->where('created_by', $user_id)
                             ->where('type', 'sell')
@@ -1137,15 +1202,65 @@ class SellPosController extends Controller
             $query->where('status', 'draft')
                 ->where('is_quotation', 0);
         } else {
-            $query->where('status', $transaction_status);
+                $query->where('status', $transaction_status);
         }
 
-        $transactions = $query->latest()
+        //--------------------------------------------------
+        if(!empty($status_filter) && $status_filter !=null  && !empty($table_filter) && $table_filter !=null ){
+            
+            $query->where('res_table_id',$table_filter);
+
+            if($status_filter == 1 ){
+                $query->whereRaw('res_order_status = "" or res_order_status is null')
+                ->whereNull('payment_status');
+            }
+            elseif($status_filter == 2){
+                $query->where('res_order_status','cooked')
+                ->whereNull('payment_status');
+            }
+            elseif($status_filter == 3){
+                $query->where('res_order_status','served')
+                ->whereNull('payment_status');
+            }
+            elseif($status_filter == 4){
+                $query->where('payment_status','paid');
+            }
+        }
+        elseif((empty($status_filter) || $status_filter ==null) && (!empty($table_filter) || $table_filter !=null )){
+            $query->where('res_table_id',$table_filter);
+        }
+        elseif((!empty($status_filter) || $status_filter !=null) && (empty($table_filter) || $table_filter ==null) ){
+
+            if($status_filter == 1 ){
+                $query->whereRaw('res_order_status = "" or res_order_status is null')
+                ->whereNull('payment_status');
+            }
+            elseif($status_filter == 2){
+                $query->where('res_order_status','cooked')
+                ->whereNull('payment_status');
+            }
+            elseif($status_filter == 3){
+                $query->where('res_order_status','served')
+                ->whereNull('payment_status');
+            }
+            elseif($status_filter == 4){
+                $query->where('payment_status','paid');
+            }
+        }
+        
+        //----------------------------------------------
+        
+
+        $transactions = $query->whereYear('updated_at', $yearNow) //año actual
+                            ->whereMonth('updated_at', $monthNow) //mes actual
+                            ->latest()
                             ->limit(10)
                             ->get();
 
+        $tables = $this->resUtil->getTables($business_id);
+
         return view('sale_pos.partials.recent_transactions')
-            ->with(compact('transactions'));
+            ->with(compact('transactions','tables')); 
     }
 
     /**
@@ -1276,4 +1391,57 @@ class SellPosController extends Controller
                     ->with(compact('products'));
         }
     }
+
+    //-----------------------------------------------------------------------------
+
+    public function UpdateStatus(Request $request){
+        if($request->ajax()){
+            
+            $output = ['success' => 0,
+                        'msg' => trans("messages.something_went_wrong")
+                        ];
+
+            $business_id = $request->session()->get('user.business_id');
+            $transaction_id = $request->input('id_transaction');
+            $status=$request->input('status');
+            $status_string='';
+                if($status == 1){
+                    $status_string = ''; 
+                    
+                }
+                elseif($status==2){
+                    $status_string = 'cooked'; 
+                    
+                }
+                elseif($status==3){
+                    $status_string = 'served'; 
+                    
+                }
+                        
+            $transaction = Transaction::where('id', $transaction_id)
+                ->where('business_id', $business_id)
+                ->first(); // Obtener el usuario que cumpla con las condiciones
+
+                
+            if (!empty($transaction)) {
+                if($status == 0 || $transaction->res_order_status == $status_string){
+                    $output = ['success' => 0,
+                        'msg' => trans("La transaccion ya tiene este estado")
+                        ];
+                }
+                
+                else{
+                    $transaction->res_order_status = $status_string; 
+                    $transaction->save(); // Guardar los cambios en la base de datos
+                    $output = ['success' => 1,
+                        'msg' => trans("Se actualizo el estado exitosamente")
+                        ];
+                }
+                
+            }
+            return $output;
+        }
+        
+    }
+
 }

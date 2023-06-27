@@ -1,5 +1,25 @@
 $(document).ready( function(){
 
+	const checkbox = document.getElementById('CheckPerquisite');
+
+	//new validation add by marco Marin 14-06-2023
+	if (perq == 1) {
+		// Marca el checkbox
+		checkbox.checked = true;
+		chekedPerquisite(1);
+	}
+
+	$('#CheckPerquisite').change(function() {
+		if ($(this).is(':checked')) {
+		  chekedPerquisite(1);
+		} 
+		else{
+			chekedPerquisite(0);
+		}
+	  });
+
+	//end validation
+
 	$('form').on('keyup keypress', function(e) {
 		var keyCode = e.keyCode || e.which;
 		if (keyCode === 13) { 
@@ -311,128 +331,138 @@ $(document).ready( function(){
 	});
 
 	//-------------------Generate Order Button 05/05/2023 By Marco------------------------
-	//Save invoice as draft
+	//Save invoice as final
 	$('button#pos-order').click(function(){
-
-		//Check if product is present or not.
-		if($('table#pos_table tbody').find('.product_row').length <= 0){
-			toastr.warning(LANG.no_products_added);
-			return false;
-		}
-
-		var is_valid = isValidPosForm();
-		if(is_valid != true){
-			return;
-		}
-
-		var data = pos_form_obj.serialize();
-		data = data + '&status=order&is_quotation=0';
-		var url = pos_form_obj.attr('action');
-
-		$.ajax({
-			method: "POST",
-			url: url,
-			data: data,
-			dataType: "json",
-			success: function(result){
-				if(result.success == 1){
-					reset_pos_form();
-					toastr.success(result.msg);
-					get_recent_transactions('final', $('div#tab_final'));
-				} else {
-					toastr.error(result.msg);
+		
+			if(validateSelect()){
+				//contenido del evento click
+				//Check if product is present or not.
+				if($('table#pos_table tbody').find('.product_row').length <= 0){
+					toastr.warning(LANG.no_products_added);
+					return false;
 				}
+
+				var is_valid = isValidPosForm();
+				if(is_valid != true){
+					return;
+				}
+
+				var data = pos_form_obj.serialize();
+				data = data + '&status=order&is_quotation=0';
+				var url = pos_form_obj.attr('action');
+
+				$.ajax({
+					method: "POST",
+					url: url,
+					data: data,
+					dataType: "json",
+					success: function(result){
+						if(result.success == 1){
+							reset_pos_form();
+							toastr.success(result.msg);
+							get_recent_transactions('final', $('div#tab_final'));
+						} else {
+							toastr.error(result.msg);
+						}
+					}
+				});
 			}
-		});
 	});
 	//---------------------End Generate Order Button-------------------------------
 
 	//Save invoice as draft
 	$('button#pos-draft').click(function(){
-
-		//Check if product is present or not.
-		if($('table#pos_table tbody').find('.product_row').length <= 0){
-			toastr.warning(LANG.no_products_added);
-			return false;
-		}
-
-		var is_valid = isValidPosForm();
-		if(is_valid != true){
-			return;
-		}
-
-		var data = pos_form_obj.serialize();
-		data = data + '&status=draft&is_quotation=0';
-		var url = pos_form_obj.attr('action');
-
-		$.ajax({
-			method: "POST",
-			url: url,
-			data: data,
-			dataType: "json",
-			success: function(result){
-				if(result.success == 1){
-					reset_pos_form();
-					toastr.success(result.msg);
-					get_recent_transactions('draft', $('div#tab_draft'));
-				} else {
-					toastr.error(result.msg);
+		
+			if(validateSelect()){
+				//contenido del evento click
+				//Check if product is present or not.
+				if($('table#pos_table tbody').find('.product_row').length <= 0){
+					toastr.warning(LANG.no_products_added);
+					return false;
 				}
-			}
-		});
+
+				var is_valid = isValidPosForm();
+				if(is_valid != true){
+					return;
+				}
+
+				var data = pos_form_obj.serialize();
+				data = data + '&status=draft&is_quotation=0';
+				var url = pos_form_obj.attr('action');
+
+				$.ajax({
+					method: "POST",
+					url: url,
+					data: data,
+					dataType: "json",
+					success: function(result){
+						if(result.success == 1){
+							reset_pos_form();
+							toastr.success(result.msg);
+							get_recent_transactions('draft', $('div#tab_draft'));
+						} else {
+							toastr.error(result.msg);
+						}
+					}
+				});
+			}	
 	});
 
 	//Save invoice as Quotation
 	$('button#pos-quotation').click(function(){
-
-		//Check if product is present or not.
-		if($('table#pos_table tbody').find('.product_row').length <= 0){
-			toastr.warning(LANG.no_products_added);
-			return false;
-		}
-
-		var is_valid = isValidPosForm();
-		if(is_valid != true){
-			return;
-		}
-
-		var data = pos_form_obj.serialize();
-		data = data + '&status=draft&is_quotation=1';
-		var url = pos_form_obj.attr('action');
-
-		$.ajax({
-			method: "POST",
-			url: url,
-			data: data,
-			dataType: "json",
-			success: function(result){
-				if(result.success == 1){
-					reset_pos_form();
-					toastr.success(result.msg);
-
-					//Check if enabled or not
-					if(result.receipt.is_enabled){
-						pos_print(result.receipt);
-					}
-
-					get_recent_transactions('quotation', $('div#tab_quotation'));
-				} else {
-					toastr.error(result.msg);
+		
+			if(validateSelect()){
+				//Check if product is present or not.
+				if($('table#pos_table tbody').find('.product_row').length <= 0){
+					toastr.warning(LANG.no_products_added);
+					return false;
 				}
+
+				var is_valid = isValidPosForm();
+				if(is_valid != true){
+					return;
+				}
+
+				var data = pos_form_obj.serialize();
+				data = data + '&status=draft&is_quotation=1';
+				var url = pos_form_obj.attr('action');
+
+				$.ajax({
+					method: "POST",
+					url: url,
+					data: data,
+					dataType: "json",
+					success: function(result){
+						if(result.success == 1){
+							reset_pos_form();
+							toastr.success(result.msg);
+
+							//Check if enabled or not
+							if(result.receipt.is_enabled){
+								pos_print(result.receipt);
+							}
+
+							get_recent_transactions('quotation', $('div#tab_quotation'));
+						} else {
+							toastr.error(result.msg);
+						}
+					}
+				});
 			}
-		});
 	});
 
 	//Finalize invoice, open payment modal
 	$('button#pos-finalize').click(function(){
+			if(validateSelect()){
+				//contenido del evento click
+				//Check if product is present or not.
+				if($('table#pos_table tbody').find('.product_row').length <= 0){
+					toastr.warning(LANG.no_products_added);
+					return false;
+				}
 
-		//Check if product is present or not.
-		if($('table#pos_table tbody').find('.product_row').length <= 0){
-			toastr.warning(LANG.no_products_added);
-			return false;
-		}
-
-		$('#modal_payment').modal('show');
+				$('#modal_payment').modal('show');
+			}	
 	});
 
 	$('#modal_payment').on('shown.bs.modal', function () {
@@ -441,39 +471,41 @@ $(document).ready( function(){
 
 	//Finalize without showing payment options
 	$('button.pos-express-finalize').click(function(){
+			if(validateSelect()){
+				//contenido del evento click
+				//Check if product is present or not.
+				if($('table#pos_table tbody').find('.product_row').length <= 0){
+					toastr.warning(LANG.no_products_added);
+					return false;
+				}
 
-		//Check if product is present or not.
-		if($('table#pos_table tbody').find('.product_row').length <= 0){
-			toastr.warning(LANG.no_products_added);
-			return false;
-		}
+				var pay_method = $(this).data('pay_method');
 
-		var pay_method = $(this).data('pay_method');
+				//Check for remaining balance & add it in 1st payment row
+				var total_payable = __read_number($('input#final_total_input'));
+				var total_paying = __read_number($('input#total_paying_input'));
+				if(total_payable > total_paying){
 
-		//Check for remaining balance & add it in 1st payment row
-		var total_payable = __read_number($('input#final_total_input'));
-		var total_paying = __read_number($('input#total_paying_input'));
-		if(total_payable > total_paying){
+					var bal_due = total_payable - total_paying;
 
-			var bal_due = total_payable - total_paying;
+					var first_row = $('#payment_rows_div').find('.payment-amount').first();
+					var first_row_val = __read_number(first_row);
+					first_row_val = first_row_val + bal_due;
+					__write_number(first_row, first_row_val);
+					first_row.trigger('change');
+				}
 
-			var first_row = $('#payment_rows_div').find('.payment-amount').first();
-			var first_row_val = __read_number(first_row);
-			first_row_val = first_row_val + bal_due;
-			__write_number(first_row, first_row_val);
-			first_row.trigger('change');
-		}
+				//Change payment method.
+				$('#payment_rows_div').find('.payment_types_dropdown').first().val(pay_method);
+				if(pay_method == 'card'){
+					$('div#card_details_modal').modal('show');
 
-		//Change payment method.
-		$('#payment_rows_div').find('.payment_types_dropdown').first().val(pay_method);
-		if(pay_method == 'card'){
-			$('div#card_details_modal').modal('show');
-
-		} else if (pay_method == 'suspend') {
-			$('div#confirmSuspendModal').modal('show');
-		} else {
-			pos_form_obj.submit();
-		}
+				} else if (pay_method == 'suspend') {
+					$('div#confirmSuspendModal').modal('show');
+				} else {
+					pos_form_obj.submit();
+				}
+			}	
 	});
 
 	$('div#card_details_modal').on('shown.bs.modal', function (e) {
@@ -887,6 +919,11 @@ $(document).ready( function(){
 		__currency_convert_recursively($(this));
 	});
 });
+//-----------------------------End jquery-------------------------------------------------------
+
+//new variable add By marco Marin 14-06-2023
+var perquisite = 0;
+//------------------------------------------
 
 function get_product_suggestion_list(category_id, brand_id, location_id, url = null){
 	if(url == null){
@@ -915,11 +952,13 @@ function get_product_suggestion_list(category_id, brand_id, location_id, url = n
 }
 
 //Get recent transactions
-function get_recent_transactions(status, element_obj){
+//Modified By Marco marin 06-2023, 
+//parameters are added, they are sent to the controller to perform filters in the query
+function get_recent_transactions(status, element_obj,status_filter=null,table_filter=null){
 	$.ajax({
 		method: "GET",
 		url: "/sells/pos/get-recent-transactions",
-		data: {status: status},
+		data: {status: status,status_filter:status_filter,table_filter:table_filter},
 		dataType: "html",
 		success: function(result){
 			element_obj.html(result);
@@ -1045,6 +1084,21 @@ function pos_each_row(row_obj){
 	__write_number(row_obj.find('input.item_tax'), unit_price_inc_tax - discounted_unit_price);
 }
 
+// New function add by marco marin 14-06-2023
+	function chekedPerquisite(per){
+		if(per == 1){
+			perquisite = 1;
+			pos_total_row();
+			console.log(perquisite);
+		}
+		else{
+			perquisite = 0;
+			pos_total_row();
+			console.log(perquisite);
+		}
+	}
+   //-------------------------------------------
+
 function pos_total_row(){
 	var total_quantity = 0;
 	var price_total = 0;
@@ -1070,17 +1124,29 @@ function pos_total_row(){
 	//$('span.unit_price_total').html(unit_price_total);
 	$('span.price_total').html(__currency_trans_from_en(price_total, false));
 
-	calculate_billing_details(price_total);
+	calculate_billing_details(price_total,perquisite);
 }
 
-function calculate_billing_details(price_total){
+function calculate_billing_details(price_total,per=0){
 	var discount = pos_discount(price_total);
 	var order_tax = pos_order_tax( price_total, discount );
 
 	//Add shipping charges.
 	var shipping_charges = __read_number($('input#shipping_charges'));
 
-	var total_payable = price_total + order_tax - discount + shipping_charges;
+	//var total_payable = price_total + order_tax - discount + shipping_charges;
+
+	//Add by Marco Marin 14-06-2023
+	//validate that there is a perquisite
+	if(per==1){
+		var subtotal_payable = price_total + order_tax - discount + shipping_charges;
+		var pro = subtotal_payable * 0.10;
+		var total_payable = subtotal_payable + pro;
+	}
+	else{
+		var total_payable = price_total + order_tax - discount + shipping_charges;
+	}
+	//----------------------------------------------------------------------
 
 	__write_number($('input#final_total_input'), total_payable);
 	var curr_exchange_rate = 1;
@@ -1186,7 +1252,7 @@ function reset_pos_form(){
 	//If on edit page then redirect to Add POS page
 	if($('form#edit_pos_sell_form').length > 0){
 		setTimeout(function() {
-			window.location = '/pos/create/';
+			window.location = '/chinaalta/public/pos/create';
 		}, 4000);
 		return true;
 	}
@@ -1374,4 +1440,24 @@ $('div#product_list_body').on('scroll', function() {
 
 		get_product_suggestion_list(category_id, brand_id, location_id);
     }
-})
+});
+
+//-------------------------------------------------------------------------------------------
+//New function to validate that the table field is mandatory, Added by Marco Marin
+function validateSelect(){
+	var selectedValue = $('#table').val();
+
+	if (selectedValue !== '') {
+		return true;
+	}
+	else{
+		toastr.warning('Campo Mesa es obligatorio');
+		$('select#table').prop( 'selectedIndex', 0).focus();
+		return false;
+	}
+}
+
+//The get_recent_transactions method is executed, with the additional filter parameters
+function get_recent_transactions_filter(table=null,status=null){
+	get_recent_transactions('final', $('div#tab_final'),status,table);
+}

@@ -12,6 +12,7 @@ use App\BusinessLocation;
 use App\Business;
 use App\CustomerGroup;
 use App\User;
+use Carbon\Carbon;
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -1082,6 +1083,203 @@ class PurchaseController extends Controller
             $output['receipt']['html_content'] = view('purchase.partials.show_details', compact('taxes', 'purchase', 'payment_methods'))->render();
         } catch (\Exception $e) {
             \Log::emergency("File:" . $e->getFile(). "Line:" . $e->getLine(). "Message:" . $e->getMessage());
+            
+            $output = ['success' => 0,
+                            'msg' => __('messages.something_went_wrong')
+                        ];
+        }
+
+        return $output;
+    }
+
+    //-----------------------------------------------------------------------
+
+    //update stock add By Marco Marin 06-06-2023
+    //---------------------------------------------------------------------------------------------------
+    /**
+     * Update stock, create default purchase transaction.
+     *
+     * @param  \Illuminate\Http\Request  $request
+     * @return \Illuminate\Http\Response
+     */
+    public function updateStock(Request $request){
+        
+        if (!auth()->user()->can('purchase.create')) {
+            abort(403, 'Unauthorized action.');
+        }
+
+        try {
+            $business_id = $request->session()->get('user.business_id');
+
+            //Check if subscribed or not
+            if (!$this->moduleUtil->isSubscribed($business_id)) {
+                return $this->moduleUtil->expiredResponse(action('PurchaseController@index'));
+            }
+
+            $date = Carbon::now();
+            $total = $request->input('qty') * 1500;
+            $transaction_data=[];
+            //$transaction_data = $request->only([ 'ref_no', 'status', 'contact_id', 'transaction_date', 'total_before_tax', 'location_id','discount_type', 'discount_amount','tax_id', 'tax_amount', 'shipping_details', 'shipping_charges', 'final_total', 'additional_notes', 'exchange_rate']);
+            $transaction_data['ref_no'] = null;
+            $transaction_data['status'] = "received";
+            $transaction_data['contact_id'] = 9;
+            $transaction_data['transaction_date'] = $date->format('d-m-Y');
+            $transaction_data['total_before_tax'] = $total;
+            $transaction_data['location_id'] = 1;
+            $transaction_data['discount_type'] = null;
+            $transaction_data['discount_amount'] = 0;
+            $transaction_data['tax_id'] = null;
+            $transaction_data['tax_amount'] = 0;
+            $transaction_data['shipping_details'] = null;
+            $transaction_data['shipping_charges'] = 0;
+            $transaction_data['final_total'] = $total;
+            $transaction_data['additional_notes'] = null;
+            $transaction_data['exchange_rate'] = 1;
+
+            $exchange_rate = $transaction_data['exchange_rate'];
+
+            //Reverse exchange rate and save it.
+            //$transaction_data['exchange_rate'] = $transaction_data['exchange_rate'];
+
+            //TODO: Check for "Undefined index: total_before_tax" issue
+            //Adding temporary fix by validating
+            $request->validate([
+                'qty' => 'required'
+            ]);
+
+            $user_id = $request->session()->get('user.id');
+            $enable_product_editing = $request->session()->get('business.enable_editing_product_from_purchase');
+
+            //Update business exchange rate.
+            Business::update_business($business_id, ['p_exchange_rate' => ($transaction_data['exchange_rate'])]);
+
+            $currency_details = $this->transactionUtil->purchaseCurrencyDetails($business_id);
+
+            //unformat input values
+            $transaction_data['total_before_tax'] = $this->productUtil->num_uf($transaction_data['total_before_tax'], $currency_details)*$exchange_rate;
+
+            // If discount type is fixed them multiply by exchange rate, else don't
+            if ($transaction_data['discount_type'] == 'fixed') {
+                $transaction_data['discount_amount'] = $this->productUtil->num_uf($transaction_data['discount_amount'], $currency_details)*$exchange_rate;
+            } elseif ($transaction_data['discount_type'] == 'percentage') {
+                $transaction_data['discount_amount'] = $this->productUtil->num_uf($transaction_data['discount_amount'], $currency_details);
+            } else {
+                $transaction_data['discount_amount'] = 0;
+            }
+
+            $transaction_data['tax_amount'] = $this->productUtil->num_uf($transaction_data['tax_amount'], $currency_details)*$exchange_rate;
+            $transaction_data['shipping_charges'] = $this->productUtil->num_uf($transaction_data['shipping_charges'], $currency_details)*$exchange_rate;
+            $transaction_data['final_total'] = $this->productUtil->num_uf($transaction_data['final_total'], $currency_details)*$exchange_rate;
+
+            $transaction_data['business_id'] = $business_id;
+            $transaction_data['created_by'] = $user_id;
+            $transaction_data['type'] = 'purchase';
+            $transaction_data['payment_status'] = 'due';
+            $transaction_data['transaction_date'] = $this->productUtil->uf_date($transaction_data['transaction_date']);
+
+            //upload document
+            $transaction_data['document'] = $this->transactionUtil->uploadFile($request, 'document', 'documents');
+            
+            DB::beginTransaction();
+
+            //Update reference count
+            $ref_count = $this->productUtil->setAndGetReferenceCount($transaction_data['type']);
+            //Generate reference number
+            if (empty($transaction_data['ref_no'])) {
+                $transaction_data['ref_no'] = $this->productUtil->generateReferenceNumber($transaction_data['type'], $ref_count);
+            }
+
+            $transaction = Transaction::create($transaction_data);
+            
+            $purchase_lines = [];
+            $purchase = [
+                'product_id' => $request->input('term'),
+                'variation_id' => $request->input('term'),
+                'quantity'=> $request->input('qty'),
+                'pp_without_discount' => $this->productUtil->num_uf("1500", $currency_details)*$exchange_rate,
+                'discount_percent' => $this->productUtil->num_uf("0", $currency_details),
+                'purchase_price' => $this->productUtil->num_uf("1500", $currency_details)*$exchange_rate,
+                'purchase_line_tax_id' => null,
+                'item_tax'=>$this->productUtil->num_uf("0", $currency_details)*$exchange_rate,
+                'purchase_price_inc_tax' => $this->productUtil->num_uf("1500", $currency_details)*$exchange_rate,
+                'lot_number' => null,
+                'profit_percent' => $this->productUtil->num_uf("30", $currency_details),
+                'default_sell_price' => $this->productUtil->num_uf("1950", $currency_details)
+                ];
+                
+           
+                $new_purchase_line = [
+                'product_id' => $purchase['product_id'],
+                'variation_id' => $purchase['variation_id'],
+                'quantity'=> $this->productUtil->num_uf($purchase['quantity'], $currency_details),
+                'pp_without_discount' => $this->productUtil->num_uf($purchase['pp_without_discount'], $currency_details)*$exchange_rate,
+                'discount_percent' => $this->productUtil->num_uf($purchase['discount_percent'], $currency_details),
+                'purchase_price' => $this->productUtil->num_uf($purchase['purchase_price'], $currency_details)*$exchange_rate,
+                'item_tax'=>$this->productUtil->num_uf($purchase['item_tax'], $currency_details)*$exchange_rate,
+                'tax_id' => $purchase['purchase_line_tax_id'],
+                'purchase_price_inc_tax' => $this->productUtil->num_uf($purchase['purchase_price_inc_tax'], $currency_details)*$exchange_rate,
+                'lot_number' => !empty($purchase['lot_number']) ? $purchase['lot_number'] : null
+                ];
+
+                if (!empty($purchase['mfg_date'])) {
+                    $new_purchase_line['mfg_date'] = $this->productUtil->uf_date($purchase['mfg_date']);
+                }
+                if (!empty($purchase['exp_date'])) {
+                    $new_purchase_line['exp_date'] =$this->productUtil->uf_date($purchase['exp_date']);
+                }
+
+                $purchase_lines[] = $new_purchase_line;
+    
+                //Edit product price
+                if ($enable_product_editing == 1) {
+                    //Default selling price is in base currency so no need to multiply with exchange rate.
+                    $new_purchase_line['default_sell_price'] = $this->productUtil->num_uf($purchase['default_sell_price'], $currency_details);
+                    $this->productUtil->updateProductFromPurchase($new_purchase_line);
+                }
+
+                // Update quantity only if status is "received"
+                if ($transaction_data['status'] == 'received') {
+                    $this->productUtil->updateProductQuantity($transaction_data['location_id'], $purchase['product_id'], $purchase['variation_id'], $purchase['quantity']);
+                }
+                $payment_lines = [
+                    $payment=[
+                        'amount' => '0.00',
+                        'method' => 'cash',
+                        'card_number' => null,
+                        'card_holder_name' => null,
+                        'card_transaction_number' => null,
+                        'card_type' => 'credit',
+                        'card_month' => null,
+                        'card_year' => null,
+                        'card_security' => null,
+                        'cheque_number' => null,
+                        'bank_account_number' => null,
+                        'transaction_no_1' => null,
+                        'transaction_no_2' => null,
+                        'transaction_no_3' => null,
+                        'note' => null,
+                    ]
+                ];
+                
+                //Add Purchase payments
+                $this->transactionUtil->createOrUpdatePaymentLines($transaction, $payment_lines);
+
+                //update payment status
+                $this->transactionUtil->updatePaymentStatus($transaction->id, $transaction->final_total);
+            
+
+
+            if (!empty($purchase_lines)) {
+                $transaction->purchase_lines()->createMany($purchase_lines);
+            }
+            
+            DB::commit();
+            
+            $output = ['success' => 1,
+                            'msg' => __('Stock Actualizado con exito')
+                        ];
+        } catch (\Exception $e) {
+            DB::rollBack();
             
             $output = ['success' => 0,
                             'msg' => __('messages.something_went_wrong')

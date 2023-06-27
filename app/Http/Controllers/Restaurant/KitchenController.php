@@ -45,9 +45,27 @@ class KitchenController extends Controller
         // }
 
         $business_id = request()->session()->get('user.business_id');
+        //for date
+        if (!empty(request()->date) && empty(request()->table)) {
+            $orders = $this->restUtil->getAllOrders($business_id, ['order_status' => 'received','date' => request()->date]);
+        }
+        //for table
+        elseif (empty(request()->date) && !empty(request()->table)) {
+            $orders = $this->restUtil->getAllOrders($business_id, ['order_status' => 'received','table' => request()->table]);
+        }
+        //for date and table
+        elseif(empty(request()->service_staff) && !empty(request()->date) && !empty(request()->table)){
+            $orders = $this->restUtil->getAllOrders($business_id, ['order_status' => 'received','date'=>request()->date,'table'=>request()->table]);
+        }  
+        else{
         $orders = $this->restUtil->getAllOrders($business_id, ['order_status' => 'received']);
+        }
 
-        return view('restaurant.kitchen.index', compact('orders'));
+        //get tables
+        $tables=[];
+        $tables=$this->restUtil->getTables($business_id);
+
+        return view('restaurant.kitchen.index', compact('orders','tables'));
     }
 
     /**

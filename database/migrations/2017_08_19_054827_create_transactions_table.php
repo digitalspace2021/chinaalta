@@ -36,6 +36,7 @@ class CreateTransactionsTable extends Migration
             $table->text('additional_notes')->nullable();
             $table->text('staff_note')->nullable();
             $table->decimal('final_total', 8, 2)->default(0);
+            $table->tinyInteger('perquisite')->default(0);//new field in the DB, add By marco marin 06/2023
             $table->integer('created_by')->unsigned();
             $table->foreign('created_by')->references('id')->on('users')->onDelete('cascade');
             $table->timestamps();

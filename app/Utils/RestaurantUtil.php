@@ -7,6 +7,7 @@ use Spatie\Permission\Models\Role;
 
 use App\Transaction;
 use App\BusinessLocation;
+use App\Restaurant\ResTable;
 use App\User;
 
 class RestaurantUtil
@@ -17,7 +18,7 @@ class RestaurantUtil
      * @param int $business_id
      * @param array $filter
      * *For new orders order_status is 'received'
-     *
+     *  Modified By Marco Marin 06-2023
      * @return obj $orders
      */
     public function getAllOrders($business_id, $filter = [])
@@ -44,8 +45,38 @@ class RestaurantUtil
             $query->whereNull('res_order_status');
         }
 
-        if (!empty($filter['waiter_id'])) {
+        //for id
+        if (!empty($filter['waiter_id']) && empty($filter['date']) && empty($filter['table'])) {
             $query->where('transactions.res_waiter_id', $filter['waiter_id']);
+        }
+        //for date
+        if (empty($filter['waiter_id']) && !empty($filter['date']) && empty($filter['table'])) {
+            $query->whereDate('transactions.transaction_date', date('Y-m-d', strtotime($filter['date'])));
+        }
+        //for table
+        if (empty($filter['waiter_id']) && empty($filter['date']) && !empty($filter['table'])) {
+            $query->where('transactions.res_table_id', $filter['table']);
+        }
+        //for id and date
+        if (!empty($filter['waiter_id']) && !empty($filter['date']) && empty($filter['table'])) {
+            $query->where('transactions.res_waiter_id', $filter['waiter_id']);
+            $query->whereDate('transactions.transaction_date', date('Y-m-d', strtotime($filter['date'])));
+        }
+        //for id and table
+        if (!empty($filter['waiter_id']) && empty($filter['date']) && !empty($filter['table'])) {
+            $query->where('transactions.res_waiter_id', $filter['waiter_id']);
+            $query->where('transactions.res_table_id', $filter['table']);
+        }
+        //for date and table
+        if (empty($filter['waiter_id']) && !empty($filter['date']) && !empty($filter['table'])) {
+            $query->whereDate('transactions.transaction_date', date('Y-m-d', strtotime($filter['date'])));
+            $query->where('transactions.res_table_id', $filter['table']);
+        }
+        //for id, date and table
+        if (!empty($filter['waiter_id']) && !empty($filter['date']) && !empty($filter['table'])) {
+            $query->where('transactions.res_waiter_id', $filter['waiter_id']);
+            $query->whereDate('transactions.transaction_date', date('Y-m-d', strtotime($filter['date'])));
+            $query->where('transactions.res_table_id', $filter['table']);
         }
                 
         $orders =  $query->select(
@@ -88,5 +119,16 @@ class RestaurantUtil
         }
 
         return $is_service_staff;
+    }
+
+    //-------------------------------------------------------------
+    //Check the available tables, Add By Marco Marin 06-2023
+    public function getTables($business_id){
+        $query=ResTable::where('business_id', $business_id)
+        ->orderBy('name','asc')
+        ->get()
+        ->pluck('name', 'id');
+
+        return $query;
     }
 }

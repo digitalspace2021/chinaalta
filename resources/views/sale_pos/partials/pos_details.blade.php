@@ -94,6 +94,17 @@
 
 					<tr>
 						<td>
+							<!-- new check Add by Marco marin 06-06-2023-->
+							<br>
+							<div class="form-check">
+								<input class="form-check-input" type="checkbox" name="perquisite"  id="CheckPerquisite">
+								<label class="form-check-label" for="CheckPerquisite">
+								  Agregar Propina 10%
+								</label>
+							  </div>
+							<hr>
+							<!-- new check Add by Marco marin 06-06-2023-->
+
 							<!-- add new button 05/05/2023-->
 							<br>
 							<button type="button"  class="btn btn-success btn-block btn-flat btn-lg no-print" id="pos-order">
@@ -186,3 +197,14 @@
 @else
 	@include('sale_pos.partials.edit_shipping_modal', ['shipping_charges' => '0.00', 'shipping_details' => ''])
 @endif
+
+<!-- validate that there is perquisite  -->
+@php
+if(!empty($perquisite)){
+	$perq = $perquisite;
+}
+else{
+	$perq = 0;
+}
+@endphp
+<script data-script-id="script-perquisite" src="{{ asset('js/perquisite.js') }}" data-valor="<?php echo $perq; ?>"></script>
